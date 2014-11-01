@@ -88,17 +88,32 @@
     //main game update loop: handle input and update all objects
     function update() {
         if (player.alive) {
-            if (game.input.keyboard.isDown(Phaser.Keyboard.A)) {
+            //detect input: 
+            //keyboard input (A/D or left/right arrow keys)
+            //touch input (tap and hold left/right sides of the screen)
+            if (game.input.keyboard.isDown(Phaser.Keyboard.A) || game.input.keyboard.isDown(Phaser.Keyboard.LEFT) ||
+                pointerLeft(game.input.pointer1) || pointerLeft(game.input.pointer2)) {
                 planet.rotation += PLAYER_SPEED;
                 meteorGroup.forEach(function(meteor) { meteor.angle += PLAYER_SPEED; });
             }
-            if (game.input.keyboard.isDown(Phaser.Keyboard.D)) {
+            if (game.input.keyboard.isDown(Phaser.Keyboard.D) || game.input.keyboard.isDown(Phaser.Keyboard.RIGHT) ||
+                pointerRight(game.input.pointer1) || pointerRight(game.input.pointer2)) {
                 planet.rotation -= PLAYER_SPEED;
                 meteorGroup.forEach(function(meteor) { meteor.angle -= PLAYER_SPEED; });
             }
         }
         
         updateMeteors();
+    }
+    
+    //returns true if the given pointer is being held down on the left side of the screen
+    function pointerLeft(pointer) {
+        return pointer && pointer.isDown && pointer.x <= (game.width / 2);
+    }
+    
+    //returns true if the given pointer is being held down on the right side of the screen
+    function pointerRight(pointer) {
+        return pointer && pointer.isDown && pointer.x > (game.width / 2);
     }
     
     //update all active meteors in the meteor group, making them fall, and detecting collision with the player or planet
@@ -132,8 +147,5 @@
         game.debug.text('Rotation: ' + planet.angle.toFixed(1), 2, 60, 'white');
         game.debug.text('Spawn Freq: ' + meteorTimer.delay, 2, 80, 'white');
         game.debug.text('Score: ' + meteorsAvoided, 2, 100, 'white');
-        
-        //game.debug.body(player);
-        //meteorGroup.forEach(function(child) { if(child.exists) game.debug.body(child); });
     }
 }());
