@@ -7,13 +7,18 @@
     var player;
     var planet;
     
-    var MAX_METEORS = 500;
+    var MAX_METEORS = 300;
     var meteorGroup;
     var meteorTimer;
     var increaseDifficultyTimer;
     var meteorSpawnCircle;
     var METEOR_FALL_SPEED = 2.0;
     var meteorsAvoided = 0;
+    
+    var MAX_DUST_CLOUDS = 50;
+    var dustGroup;
+    var DUST_ALPHA_FALLOFF = 0.02;      //rate at which dust clouds fade
+    var DUST_SCALE_MULTIPLIER = 1.03;   //how fast to expand dust clouds
 
     //preload all assets used by the game
     function preload() {
@@ -21,6 +26,7 @@
         game.load.image('planet', 'assets/dirtplanet.png');
         game.load.image('player', 'assets/stickman.png');
         game.load.image('meteor', 'assets/meteor.png');
+        game.load.image('dust', 'assets/dust.png');
         game.time.advancedTiming = true;
     }
     
@@ -35,7 +41,7 @@
         player.y -= (planet.height / 2) + player.height;
         game.physics.enable(player, Phaser.Physics.ARCADE);
         
-        initializeMeteorGroup();
+        initializeMeteors();
         meteorTimer = game.time.events.loop(200, spawnMeteor);
         increaseDifficultyTimer = game.time.events.loop(1000, increaseDifficulty);
         var spawnCircleDiameter = Math.max(game.width, game.height) * 1.5;
@@ -44,7 +50,7 @@
     
     //load a bunch of meteors into a group so they're ready to appear without delay during the game
     //TODO: show a loading screen while this runs (how?)
-    function initializeMeteorGroup() {
+    function initializeMeteors() {
         meteorGroup = game.add.group();
         for(var i = 0; i < MAX_METEORS; i++) {
             //add meteors to the game, defaulting to not existing so they're not drawn yet
@@ -52,6 +58,14 @@
             game.physics.enable(meteor, Phaser.Physics.ARCADE);
             meteor.anchor.set(0.5);
             meteor.exists = false;
+        }
+        
+        //dust clouds for when meteors explode
+        dustGroup = game.add.group();
+        for(var j = 0; j < MAX_DUST_CLOUDS; j++) {
+            var dust = dustGroup.create(0, 0, 'dust');
+            dust.anchor.set(0.5);
+            dust.exists = false;
         }
     }
     
@@ -62,12 +76,31 @@
             var meteorAngle = game.rnd.angle();
             meteor.orbitRadius = meteorSpawnCircle.radius;
             meteor.angle = meteorAngle;
+            meteor.events.onKilled.add(meteorKilled);
             
             var spawnPoint = getPointOnCircle(meteorSpawnCircle, meteorAngle);
             meteor.x = spawnPoint.x;
             meteor.y = spawnPoint.y;
             
             meteor.exists = true;
+        }
+    }
+    
+    //a meteor was just killed, spawn a dust cloud wherever it was
+    function meteorKilled(meteor) {
+        spawnDustCloud(meteor);
+    }
+    
+    //spawn an expanding, fading dust cloud at the given meteor's position
+    function spawnDustCloud(meteor) {
+        var dust = dustGroup.getFirstExists(false);
+        if(dust) {
+            dust.x = meteor.x;
+            dust.y = meteor.y;
+            dust.alpha = 0.75;
+            dust.scale.x = 1;
+            dust.scale.y = 1;
+            dust.exists = true;
         }
     }
     
@@ -94,16 +127,19 @@
             if (game.input.keyboard.isDown(Phaser.Keyboard.A) || game.input.keyboard.isDown(Phaser.Keyboard.LEFT) ||
                 pointerLeft(game.input.pointer1) || pointerLeft(game.input.pointer2)) {
                 planet.rotation += PLAYER_SPEED;
-                meteorGroup.forEach(function(meteor) { meteor.angle += PLAYER_SPEED; });
+                meteorGroup.forEach(function(meteor) { if (meteor.exists) meteor.angle += PLAYER_SPEED; });
+                dustGroup.forEach(function(dust) { if (dust.exists) dust.angle += PLAYER_SPEED; });
             }
             if (game.input.keyboard.isDown(Phaser.Keyboard.D) || game.input.keyboard.isDown(Phaser.Keyboard.RIGHT) ||
                 pointerRight(game.input.pointer1) || pointerRight(game.input.pointer2)) {
                 planet.rotation -= PLAYER_SPEED;
-                meteorGroup.forEach(function(meteor) { meteor.angle -= PLAYER_SPEED; });
+                meteorGroup.forEach(function(meteor) { if (meteor.exists) meteor.angle -= PLAYER_SPEED; });
+                dustGroup.forEach(function(dust) { if (dust.exists) dust.angle += PLAYER_SPEED; });
             }
         }
         
         updateMeteors();
+        updateDustClouds();
     }
     
     //returns true if the given pointer is being held down on the left side of the screen
@@ -136,6 +172,21 @@
                 var newPosition = getPointOnCircle(orbitCircle, meteor.angle);
                 meteor.x = newPosition.x;
                 meteor.y = newPosition.y;
+            }
+        });
+    }
+    
+    //fade out all dust clouds, removing them once they're no longer visible
+    function updateDustClouds() {
+        dustGroup.forEach(function(dust) {
+            if (!dust.exists) return;
+            dust.alpha -= DUST_ALPHA_FALLOFF;
+            if (dust.alpha <= 0) {
+                dust.kill();
+            }
+            else {
+                dust.scale.x *= DUST_SCALE_MULTIPLIER;
+                dust.scale.y *= DUST_SCALE_MULTIPLIER;
             }
         });
     }
