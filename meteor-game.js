@@ -128,13 +128,11 @@
                 pointerLeft(game.input.pointer1) || pointerLeft(game.input.pointer2)) {
                 planet.rotation += PLAYER_SPEED;
                 meteorGroup.forEach(function(meteor) { if (meteor.exists) meteor.angle += PLAYER_SPEED; });
-                dustGroup.forEach(function(dust) { if (dust.exists) dust.angle += PLAYER_SPEED; });
             }
             if (game.input.keyboard.isDown(Phaser.Keyboard.D) || game.input.keyboard.isDown(Phaser.Keyboard.RIGHT) ||
                 pointerRight(game.input.pointer1) || pointerRight(game.input.pointer2)) {
                 planet.rotation -= PLAYER_SPEED;
                 meteorGroup.forEach(function(meteor) { if (meteor.exists) meteor.angle -= PLAYER_SPEED; });
-                dustGroup.forEach(function(dust) { if (dust.exists) dust.angle += PLAYER_SPEED; });
             }
         }
         
