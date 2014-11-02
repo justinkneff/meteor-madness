@@ -204,7 +204,7 @@
     
     //the player was just killed, show the game over screen
     function playerKilled() {
-        gameOverText.text = 'You avoided ' + meteorsAvoided + ' meteors!';
+        gameOverText.text = 'You avoided ' + meteorsAvoided.toLocaleString() + ' meteors!';
         gameOverControls.visible = true;
         var tween = game.add.tween(gameOverControls);
         tween.to({y: (planet.y / 2)}, 2000, Phaser.Easing.Bounce.Out, true);
