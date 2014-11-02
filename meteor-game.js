@@ -1,7 +1,7 @@
 (function() {
     'use strict';
     var game = new Phaser.Game(window.innerWidth || 800, window.innerHeight || 800, Phaser.CANVAS, 'phaser-game',
-        { preload: preload, create: create, update: update, render: render });
+        { preload: preload, create: create, update: update });
         
     var PLAYER_SPEED = 0.015;   //player movement speed (radians of rotation)
     var player;
@@ -10,16 +10,21 @@
     
     var MAX_METEORS = 300;
     var meteorGroup;
-    var meteorTimer;
-    var increaseDifficultyTimer;
     var meteorSpawnCircle;
     var METEOR_FALL_SPEED = 2.0;
     var meteorsAvoided = 0;
+    var INITIAL_METEOR_SPAWN_TIMER = 200;
+    var meteorTimer;
+    var DIFFICULTY_INCREASE_TIMER = 1000;
+    var increaseDifficultyTimer;
     
     var MAX_DUST_CLOUDS = 50;
     var dustGroup;
     var DUST_ALPHA_FALLOFF = 0.02;      //rate at which dust clouds fade
     var DUST_SCALE_MULTIPLIER = 1.03;   //how fast to expand dust clouds
+    
+    var gameOverControls;
+    var gameOverText;
 
     //preload all assets used by the game
     function preload() {
@@ -28,6 +33,7 @@
         game.load.image('player', 'assets/stickman.png');
         game.load.image('meteor', 'assets/meteor.png');
         game.load.image('dust', 'assets/dust.png');
+        game.load.spritesheet('startButton', 'assets/startbutton.png', 192, 64);
         game.time.advancedTiming = true;
     }
     
@@ -42,12 +48,15 @@
         player = game.add.sprite(planet.x, planet.y, 'player');
         player.y -= (planet.height / 2) + player.height;
         game.physics.enable(player, Phaser.Physics.ARCADE);
+        player.events.onKilled.add(playerKilled);
         
         initializeMeteors();
-        meteorTimer = game.time.events.loop(200, spawnMeteor);
-        increaseDifficultyTimer = game.time.events.loop(1000, increaseDifficulty);
+        meteorTimer = game.time.events.loop(INITIAL_METEOR_SPAWN_TIMER, spawnMeteor);
+        increaseDifficultyTimer = game.time.events.loop(DIFFICULTY_INCREASE_TIMER, increaseDifficulty);
         var spawnCircleDiameter = Math.max(game.width, game.height) * 1.5;
         meteorSpawnCircle = new Phaser.Circle(planet.x, planet.y, spawnCircleDiameter);
+        
+        gameOverControls = initializeGameOverControls();
     }
     
     //load a bunch of meteors into a group so they're ready to appear without delay during the game
@@ -164,8 +173,7 @@
         game.physics.arcade.overlap(player, meteorGroup, function() { player.kill(); });
         
         //make each meteor fall, blowing it up if it reaches the planet
-        meteorGroup.forEach(function(meteor) {
-            if (!meteor.exists) return;
+        meteorGroup.forEachExists(function(meteor) {
             //collided with the planet?
             if (meteor.orbitRadius < (planet.width / 2) + (meteor.width / 2)) {
                 meteor.kill();
@@ -182,8 +190,7 @@
     
     //fade out all dust clouds, removing them once they're no longer visible
     function updateDustClouds() {
-        dustGroup.forEach(function(dust) {
-            if (!dust.exists) return;
+        dustGroup.forEachExists(function(dust) {
             positionSpriteOnCircle(dust, planetCircle);
             dust.alpha -= DUST_ALPHA_FALLOFF;
             if (dust.alpha <= 0) {
@@ -196,12 +203,46 @@
         });
     }
     
-    //render a debug overlay
-    function render() {
-        game.debug.text('FPS: ' + game.time.fps || '--', 2, 20, "white");   
-        game.debug.text('Meteors: ' + meteorGroup.iterate('exists', true, Phaser.Group.RETURN_TOTAL), 2, 40, 'white');
-        game.debug.text('Rotation: ' + planet.angle.toFixed(1), 2, 60, 'white');
-        game.debug.text('Spawn Freq: ' + meteorTimer.delay, 2, 80, 'white');
-        game.debug.text('Score: ' + meteorsAvoided, 2, 100, 'white');
+    //the player was just killed, show the game over screen
+    function playerKilled() {
+        gameOverText.text = 'You avoided ' + meteorsAvoided + ' meteors!';
+        gameOverControls.visible = true;
+        var tween = game.add.tween(gameOverControls);
+        tween.to({y: (planet.y / 2)}, 2000, Phaser.Easing.Bounce.Out, true);
+    }
+    
+    //create game over text and a restart button in a separate, initially
+    //invisible group, to be tweened onto the screen once the player dies
+    function initializeGameOverControls() {
+        var controls = game.add.group();
+        
+        gameOverText = new Phaser.Text(game, game.world.centerX, 0, 'You avoided xxx meteors!', {font: 'bold 42pt Arial', fill: 'white'});
+        gameOverText.anchor.set(0.5, 0);
+        controls.add(gameOverText);
+        
+        var startButton = new Phaser.Button(game, game.world.centerX, gameOverText.y + 100, 'startButton', startButtonPressed, null, 0, 0, 1, 0);
+        startButton.anchor.set(0.5, 0);
+        controls.add(startButton);
+        
+        controls.y = game.height;
+        controls.visible = false;
+        return controls;
+    }
+    
+    //the start/restart button was pressed, reset the game
+    function startButtonPressed() {
+        resetGame();
+    }
+    
+    //reset game objects and variables for a new playthrough
+    function resetGame() {
+        meteorGroup.forEachExists(function(meteor) { meteor.exists = false; });
+        dustGroup.forEachExists(function(dust) { dust.exists = false; });
+        meteorsAvoided = 0;
+        meteorTimer.delay = INITIAL_METEOR_SPAWN_TIMER;
+        increaseDifficultyTimer.delay = DIFFICULTY_INCREASE_TIMER;
+        player.revive();
+        gameOverControls.y = game.height;
+        gameOverControls.visible = false;
     }
 }());
