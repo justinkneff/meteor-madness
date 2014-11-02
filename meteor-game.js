@@ -84,9 +84,8 @@
     function spawnMeteor() {
         var meteor = meteorGroup.getFirstExists(false);
         if (meteor) {
-            var meteorAngle = game.rnd.angle();
             meteor.orbitRadius = meteorSpawnCircle.radius;
-            meteor.angle = meteorAngle;
+            meteor.angle = game.rnd.angle();
             meteor.events.onKilled.add(meteorKilled);
             positionSpriteOnCircle(meteor, meteorSpawnCircle);
             meteor.exists = true;
@@ -104,7 +103,7 @@
         if(dust) {
             dust.x = meteor.x;
             dust.y = meteor.y;
-            dust.angle = meteor.angle;
+            dust.rotation = meteor.rotation;
             dust.alpha = 0.75;
             dust.scale.x = 1;
             dust.scale.y = 1;
@@ -119,16 +118,16 @@
         meteorTimer.delay--;
     }
     
-    //returns the (x, y) coordinates of the point on the given circle at the given angle (polar -> cartesian)
+    //returns the (x, y) coordinates of the point on the given circle at the given angle (in radians)
     function getPointOnCircle(circle, angle) {
         var x = circle.x + (circle.radius * Math.cos(angle));
         var y = circle.y + (circle.radius * Math.sin(angle));
         return new Phaser.Point(x, y);
     }
     
-    //places the given sprite on the given circle, at the angle specified by sprite.angle
+    //places the given sprite on the given circle, at the angle (in radians) specified by sprite.rotation
     function positionSpriteOnCircle(sprite, circle) {
-        var newPosition = getPointOnCircle(circle, sprite.angle);
+        var newPosition = getPointOnCircle(circle, sprite.rotation);
         sprite.x = newPosition.x;
         sprite.y = newPosition.y;
     }
@@ -142,14 +141,14 @@
             if (game.input.keyboard.isDown(Phaser.Keyboard.A) || game.input.keyboard.isDown(Phaser.Keyboard.LEFT) ||
                 pointerLeft(game.input.pointer1) || pointerLeft(game.input.pointer2)) {
                 planet.rotation += PLAYER_SPEED;
-                meteorGroup.forEach(function(meteor) { if (meteor.exists) meteor.angle += PLAYER_SPEED; });
-                dustGroup.forEach(function(dust) { if (dust.exists) dust.angle += PLAYER_SPEED; });
+                meteorGroup.forEach(function(meteor) { if (meteor.exists) meteor.rotation += PLAYER_SPEED; });
+                dustGroup.forEach(function(dust) { if (dust.exists) dust.rotation += PLAYER_SPEED; });
             }
             if (game.input.keyboard.isDown(Phaser.Keyboard.D) || game.input.keyboard.isDown(Phaser.Keyboard.RIGHT) ||
                 pointerRight(game.input.pointer1) || pointerRight(game.input.pointer2)) {
                 planet.rotation -= PLAYER_SPEED;
-                meteorGroup.forEach(function(meteor) { if (meteor.exists) meteor.angle -= PLAYER_SPEED; });
-                dustGroup.forEach(function(dust) { if (dust.exists) dust.angle -= PLAYER_SPEED; });
+                meteorGroup.forEach(function(meteor) { if (meteor.exists) meteor.rotation -= PLAYER_SPEED; });
+                dustGroup.forEach(function(dust) { if (dust.exists) dust.rotation -= PLAYER_SPEED; });
             }
         }
         
