@@ -23,6 +23,7 @@
     var DUST_ALPHA_FALLOFF = 0.02;      //rate at which dust clouds fade
     var DUST_SCALE_MULTIPLIER = 1.03;   //how fast to expand dust clouds
     
+    var newGameControls;
     var gameOverControls;
     var gameOverText;
 
@@ -46,6 +47,7 @@
         planetCircle = new Phaser.Circle(planet.x, planet.y, planet.width);
         
         player = game.add.sprite(planet.x, planet.y, 'player');
+        player.kill();  //start out dead, for the intro screen
         player.y -= (planet.height / 2) + player.height;
         game.physics.enable(player, Phaser.Physics.ARCADE);
         player.events.onKilled.add(playerKilled);
@@ -57,6 +59,8 @@
         meteorSpawnCircle = new Phaser.Circle(planet.x, planet.y, spawnCircleDiameter);
         
         gameOverControls = initializeGameOverControls();
+        newGameControls = initializeNewGameControls();
+        tweenGroupOntoScreen(newGameControls);
     }
     
     //load a bunch of meteors into a group so they're ready to appear without delay during the game
@@ -139,13 +143,13 @@
             //keyboard input (A/D or left/right arrow keys)
             //touch input (tap and hold left/right sides of the screen)
             if (game.input.keyboard.isDown(Phaser.Keyboard.A) || game.input.keyboard.isDown(Phaser.Keyboard.LEFT) ||
-                pointerLeft(game.input.pointer1) || pointerLeft(game.input.pointer2)) {
+                pointerLeft(game.input.mousePointer) || pointerLeft(game.input.pointer1) || pointerLeft(game.input.pointer2)) {
                 planet.rotation += PLAYER_SPEED;
                 meteorGroup.forEach(function(meteor) { if (meteor.exists) meteor.rotation += PLAYER_SPEED; });
                 dustGroup.forEach(function(dust) { if (dust.exists) dust.rotation += PLAYER_SPEED; });
             }
             if (game.input.keyboard.isDown(Phaser.Keyboard.D) || game.input.keyboard.isDown(Phaser.Keyboard.RIGHT) ||
-                pointerRight(game.input.pointer1) || pointerRight(game.input.pointer2)) {
+                pointerRight(game.input.mousePointer) || pointerRight(game.input.pointer1) || pointerRight(game.input.pointer2)) {
                 planet.rotation -= PLAYER_SPEED;
                 meteorGroup.forEach(function(meteor) { if (meteor.exists) meteor.rotation -= PLAYER_SPEED; });
                 dustGroup.forEach(function(dust) { if (dust.exists) dust.rotation -= PLAYER_SPEED; });
@@ -206,8 +210,33 @@
     function playerKilled() {
         gameOverText.text = 'You avoided ' + meteorsAvoided + ' meteors!';
         gameOverControls.visible = true;
-        var tween = game.add.tween(gameOverControls);
-        tween.to({y: (planet.y / 2)}, 2000, Phaser.Easing.Bounce.Out, true);
+        tweenGroupOntoScreen(gameOverControls);
+    }
+    
+    //create a title screen and a start button in a separate group
+    //to be tweened onto the screen at the start of the game
+    function initializeNewGameControls() {
+        var controls = game.add.group();
+        
+        var titleText = new Phaser.Text(game, game.world.centerX, 20, 'Meteor Madness!', {font: 'bold 72pt Arial', fill: 'white'});
+        titleText.anchor.set(0.5, 0);
+        controls.add(titleText);
+        
+        var instructionsStyle = {font: 'bold 20pt Arial', fill: 'white'};
+        var instructionsLineOne = new Phaser.Text(game, game.world.centerX, titleText.y + 120, 'Tap left or right to move.', instructionsStyle);
+        instructionsLineOne.anchor.set(0.5, 0);
+        controls.add(instructionsLineOne);
+        
+        var instructionsLineTwo = new Phaser.Text(game, game.world.centerX, instructionsLineOne.y + 32, 'Avoid the meteor shower!', instructionsStyle);
+        instructionsLineTwo.anchor.set(0.5, 0);
+        controls.add(instructionsLineTwo);
+        
+        var startButton = new Phaser.Button(game, game.world.centerX, instructionsLineTwo.y + 60, 'startButton', startButtonPressed, null, 0, 0, 1, 0);
+        startButton.anchor.set(0.5, 0);
+        controls.add(startButton);
+        
+        controls.y = game.height;
+        return controls;
     }
     
     //create game over text and a restart button in a separate, initially
@@ -215,7 +244,7 @@
     function initializeGameOverControls() {
         var controls = game.add.group();
         
-        gameOverText = new Phaser.Text(game, game.world.centerX, 0, 'You avoided xxx meteors!', {font: 'bold 42pt Arial', fill: 'white'});
+        gameOverText = new Phaser.Text(game, game.world.centerX, 70, 'You avoided xxx meteors!', {font: 'bold 42pt Arial', fill: 'white'});
         gameOverText.anchor.set(0.5, 0);
         controls.add(gameOverText);
         
@@ -226,6 +255,12 @@
         controls.y = game.height;
         controls.visible = false;
         return controls;
+    }
+    
+    //tweens the given group of drawables to the vertical center of the screen
+    function tweenGroupOntoScreen(group) {
+        var tween = game.add.tween(group);
+        tween.to({y: (planet.y / 2)}, 2000, Phaser.Easing.Bounce.Out, true);
     }
     
     //the start/restart button was pressed, reset the game
@@ -241,6 +276,8 @@
         meteorTimer.delay = INITIAL_METEOR_SPAWN_TIMER;
         increaseDifficultyTimer.delay = DIFFICULTY_INCREASE_TIMER;
         player.revive();
+        newGameControls.y = game.height;
+        newGameControls.visible = false;
         gameOverControls.y = game.height;
         gameOverControls.visible = false;
     }
